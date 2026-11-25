@@ -1,13 +1,11 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
 import 'ingredient_art_catalog.dart';
 import '../services/ingredient_photo_service.dart';
 
-/// A common media area, with photographic representatives on the shelf and
-/// vector/category fallbacks wherever an asset or user photo is unavailable.
+/// Displays a saved photo, a representative illustration, or a category icon.
 class FoodIllustration extends StatelessWidget {
   const FoodIllustration({
     super.key,
@@ -75,19 +73,22 @@ class FoodIllustration extends StatelessWidget {
       artKey: artKey,
     );
     final drawing = art.isRepresentative
-        ? CustomPaint(painter: _FoodPainter(art.representativeName!))
+        ? FittedBox(
+            alignment: Alignment.bottomCenter,
+            child: CustomPaint(
+              size: Size.square(size),
+              painter: _FoodPainter(art.representativeName!),
+            ),
+          )
         : _CategoryArt(
             category: art.category,
             name: name,
             size: size,
             shelfPresentation: shelfPresentation,
           );
-    final atlasIndex = shelfPresentation ? _shelfAtlasIndices[art.key] : null;
     final fallback = _present(
       context,
-      atlasIndex == null
-          ? drawing
-          : _ShelfRepresentative(index: atlasIndex, fallback: drawing),
+      drawing,
       art.isRepresentative ? '대표' : null,
     );
     final media = SizedBox.square(
@@ -178,112 +179,6 @@ class _LocalPhotoState extends State<_LocalPhoto> {
             ),
     );
   }
-}
-
-const _shelfAtlasIndices = {
-  'tofu': 0,
-  'milk': 1,
-  'leek': 2,
-  'egg': 3,
-  'carrot': 4,
-  'kimchi': 5,
-};
-
-/// Decode one shared, bounded atlas; no network or per-item image generation.
-class _ShelfRepresentative extends StatefulWidget {
-  const _ShelfRepresentative({required this.index, required this.fallback});
-  final int index;
-  final Widget fallback;
-
-  @override
-  State<_ShelfRepresentative> createState() => _ShelfRepresentativeState();
-}
-
-class _ShelfRepresentativeState extends State<_ShelfRepresentative> {
-  ImageStream? _stream;
-  ImageStreamListener? _listener;
-  ImageInfo? _info;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final stream = const ResizeImage(
-      AssetImage('assets/images/food-cutout-sheet.png'),
-      width: 768,
-    ).resolve(createLocalImageConfiguration(context));
-    if (_stream?.key == stream.key) return;
-    _detach();
-    _stream = stream;
-    _listener = ImageStreamListener(
-      (info, synchronous) {
-        if (!mounted) {
-          info.dispose();
-          return;
-        }
-        setState(() {
-          _info?.dispose();
-          _info = info;
-        });
-      },
-      onError: (Object error, StackTrace? stack) {
-        if (!mounted) return;
-        setState(() {
-          _info?.dispose();
-          _info = null;
-        });
-      },
-    );
-    stream.addListener(_listener!);
-  }
-
-  void _detach() {
-    if (_listener != null) _stream?.removeListener(_listener!);
-  }
-
-  @override
-  void dispose() {
-    _detach();
-    _info?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => _info == null
-      ? widget.fallback
-      : CustomPaint(painter: _ShelfAtlasPainter(_info!.image, widget.index));
-}
-
-class _ShelfAtlasPainter extends CustomPainter {
-  const _ShelfAtlasPainter(this.image, this.index);
-  final ui.Image image;
-  final int index;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cellWidth = image.width / 3;
-    final cellHeight = image.height / 2;
-    final extent = size.shortestSide;
-    canvas.drawImageRect(
-      image,
-      Rect.fromLTWH(
-        (index % 3) * cellWidth,
-        (index ~/ 3) * cellHeight,
-        cellWidth,
-        cellHeight,
-      ),
-      Rect.fromLTWH(
-        (size.width - extent) / 2,
-        size.height - extent,
-        extent,
-        extent,
-      ),
-      Paint()..filterQuality = FilterQuality.medium,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ShelfAtlasPainter oldDelegate) =>
-      image != oldDelegate.image || index != oldDelegate.index;
 }
 
 /// A category symbol deliberately avoids pretending an unknown item is a jar.

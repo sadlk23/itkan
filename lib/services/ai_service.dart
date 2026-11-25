@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/inventory.dart';
 import '../models/recipe.dart';
 
-/// The endpoint is supplied by the course provider. No vendor is assumed.
+/// Sends recipe and kitchen requests to the configured AI endpoint.
 /// A proxy returns {"recipes": [...]} or {"answer": "JSON text"}.
 class AiService {
   static int _recipeSequence = 0;

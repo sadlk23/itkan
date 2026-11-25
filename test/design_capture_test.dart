@@ -88,16 +88,6 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.runAsync(() async {
-        await precacheImage(
-          const ResizeImage(
-            AssetImage('assets/images/food-cutout-sheet.png'),
-            width: 768,
-          ),
-          boundary.currentContext!,
-        );
-      });
-      await tester.pumpAndSettle();
     }
 
     Future<void> capture(String name) async {
